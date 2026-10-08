@@ -26,8 +26,8 @@ const j = (code, obj, extra = {}) =>
 
 function requirements(resource, usd) {
   const atomic = String(Math.max(50000, Math.round(usd * 1e6)));
-  return { scheme: "exact", network: NETWORK, maxAmountRequired: atomic, asset: USDC,
-    payTo: PAYTO, resource, description: "APEX capability", mimeType: "application/json",
+  return { scheme: "exact", network: NETWORK, amount: atomic, maxAmountRequired: atomic,
+    asset: USDC, payTo: PAYTO, resource, description: "APEX capability", mimeType: "application/json",
     maxTimeoutSeconds: 120, extra: { feePayer: FEEPAYER } };
 }
 function manifest(origin) {
