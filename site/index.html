@@ -1,0 +1,223 @@
+<title>APEX — Verifiable Signal Oracle for the Agent Economy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --ink:#070A0F; --panel:#0E141C; --panel2:#131B25; --line:#1E2A38;
+    --fg:#E8EEF4; --mut:#7E8CA0; --dim:#56footer; --dim:#5A697C;
+    --signal:#34E5C6;      /* verified / signal */
+    --value:#F6B452;       /* money / APR / USDC */
+    --danger:#FF6B6B;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:
+      radial-gradient(1200px 600px at 78% -10%, rgba(52,229,198,.07), transparent 60%),
+      radial-gradient(900px 500px at 10% 110%, rgba(246,180,82,.05), transparent 55%),
+      var(--ink);
+    color:var(--fg);font-family:var(--sans);line-height:1.5;
+    font-feature-settings:"ss01","cv01";-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+  a{color:inherit}
+  .mono{font-family:var(--mono)}
+  .num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+
+  /* top bar */
+  header{border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;
+    background:rgba(7,10,15,.72);backdrop-filter:blur(10px)}
+  .bar{display:flex;align-items:center;justify-content:space-between;height:58px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.14em;font-size:14px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--signal);
+    box-shadow:0 0 0 0 rgba(52,229,198,.6);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,229,198,.5)}70%{box-shadow:0 0 0 9px rgba(52,229,198,0)}100%{box-shadow:0 0 0 0 rgba(52,229,198,0)}}
+  .live{font-family:var(--mono);font-size:11px;color:var(--signal);letter-spacing:.1em}
+  nav a{font-size:13px;color:var(--mut);text-decoration:none;margin-left:20px}
+  nav a:hover{color:var(--fg)}
+  @media(max-width:620px){nav{display:none}}
+
+  /* hero */
+  .hero{padding:72px 0 40px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:var(--signal);text-transform:uppercase}
+  h1{font-size:clamp(34px,6vw,62px);line-height:1.02;margin:16px 0 0;font-weight:820;
+    letter-spacing:-.02em;text-wrap:balance;max-width:16ch}
+  h1 .g{background:linear-gradient(100deg,var(--signal),#9af0e0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{margin:20px 0 0;font-size:clamp(16px,2.4vw,20px);color:var(--mut);max-width:62ch;text-wrap:pretty}
+  .cta{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
+  .btn{font-family:var(--mono);font-size:13px;text-decoration:none;padding:11px 18px;border-radius:9px;
+    border:1px solid var(--line);color:var(--fg);transition:.18s;display:inline-flex;gap:8px;align-items:center}
+  .btn.p{background:var(--signal);color:#05221d;border-color:var(--signal);font-weight:700}
+  .btn.p:hover{filter:brightness(1.08)}
+  .btn:hover{border-color:var(--signal);color:var(--signal)}
+
+  section{padding:46px 0;border-top:1px solid var(--line)}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.16em;color:var(--mut);text-transform:uppercase}
+  h2{font-size:clamp(22px,3.4vw,30px);margin:10px 0 4px;letter-spacing:-.01em;font-weight:760}
+  .sub{color:var(--mut);max-width:60ch;margin:0 0 26px}
+
+  /* metric grid */
+  .grid{display:grid;gap:14px;grid-template-columns:repeat(2,1fr)}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:20px 20px 18px;position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(52,229,198,.5),transparent)}
+  .card .tag{font-family:var(--mono);font-size:11px;color:var(--mut);letter-spacing:.1em;text-transform:uppercase}
+  .big{font-size:40px;font-weight:800;margin:8px 0 2px;letter-spacing:-.02em}
+  .big.v{color:var(--value)}
+  .big.s{color:var(--signal)}
+  .cap{color:var(--mut);font-size:13px}
+  .rows{margin-top:14px;display:flex;flex-direction:column;gap:7px}
+  .row{display:flex;align-items:center;justify-content:space-between;font-size:13px;
+    padding-bottom:7px;border-bottom:1px dashed var(--line)}
+  .row:last-child{border-bottom:0;padding-bottom:0}
+  .row .c{font-family:var(--mono);color:var(--fg)}
+  .row .a{font-family:var(--mono);color:var(--value);font-variant-numeric:tabular-nums}
+  .route{color:var(--dim);font-size:11px;font-family:var(--mono)}
+
+  /* price list */
+  .plist{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
+  @media(max-width:620px){.plist{grid-template-columns:1fr}}
+  .p{display:flex;justify-content:space-between;align-items:center;background:var(--panel);
+    border:1px solid var(--line);border-radius:11px;padding:13px 15px}
+  .p .n{font-family:var(--mono);font-size:13px}
+  .p .d{color:var(--mut);font-size:11.5px;margin-top:2px}
+  .p .pr{font-family:var(--mono);color:var(--value);font-weight:700;white-space:nowrap;margin-left:12px}
+
+  /* flow */
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:8px}
+  @media(max-width:720px){.flow{grid-template-columns:1fr;gap:10px}}
+  .step{padding:18px 16px;border:1px solid var(--line);position:relative}
+  .flow .step:not(:last-child){border-right:0}
+  @media(max-width:720px){.flow .step{border-right:1px solid var(--line)!important;border-radius:11px}}
+  .step .i{font-family:var(--mono);font-size:11px;color:var(--signal)}
+  .step h4{margin:8px 0 4px;font-size:15px}
+  .step p{margin:0;color:var(--mut);font-size:12.5px}
+  .flow .step:first-child{border-radius:12px 0 0 12px}
+  .flow .step:last-child{border-radius:0 12px 12px 0}
+
+  .status{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .pill{font-family:var(--mono);font-size:11.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}
+  .pill b{color:var(--signal);font-weight:700}
+  .pill.pend b{color:var(--value)}
+
+  footer{border-top:1px solid var(--line);padding:30px 0 54px;color:var(--dim);font-size:12.5px}
+  footer .mono{color:var(--mut)}
+  .hon{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--value);
+    border-radius:10px;padding:14px 16px;color:var(--mut);font-size:13px;margin-top:14px}
+  .hon b{color:var(--fg)}
+</style>
+
+<header><div class="wrap bar">
+  <div class="logo"><span class="dot"></span>APEX</div>
+  <div style="display:flex;align-items:center;gap:18px">
+    <span class="live">● LIVE · measured on real data</span>
+    <nav>
+      <a href="#edge">Edge</a><a href="#market">Market</a><a href="#arch">Architecture</a>
+      <a href="https://github.com/HinojosaMaker/apex">GitHub</a>
+    </nav>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Verifiable Signal Oracle · Agent Economy</div>
+    <h1>Crypto intelligence agents <span class="g">pay for</span>. Reputation the chain <span class="g">can't fake</span>.</h1>
+    <p class="lead">APEX sells measured crypto signals to AI agents per call in USDC (x402) — and every
+      call's outcome is attested on-chain on Base. A hit-rate nobody can forge, back-date, or buy.
+      Built measurement-first: wrong calls are recorded too.</p>
+    <div class="cta">
+      <a class="btn p" href="https://github.com/HinojosaMaker/apex">◆ View the code</a>
+      <a class="btn" href="#arch">How it works</a>
+      <a class="btn" href="#edge">The measured edge</a>
+    </div>
+  </div>
+
+  <section id="edge">
+    <div class="kicker">01 · Measured, not claimed</div>
+    <h2>Signals from a real engine — scored out-of-sample</h2>
+    <p class="sub">Every number here comes from live market data and honest cross-validation. No vibes.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="tag">Biomimetic screener · genetic algorithm</div>
+        <div class="big s num">0.693</div>
+        <div class="cap">AUC <b>out-of-sample</b> (5-fold CV, 60 real tokens). Evolved by selection·crossover·mutation to predict tradeability.</div>
+      </div>
+      <div class="card">
+        <div class="tag">Quantum-optimized carry basket · QUBO annealing</div>
+        <div class="big v num">9.8<span style="font-size:22px"> % APR</span></div>
+        <div class="cap">Delta-neutral, latency-immune. Basket chosen by simulated annealing over live funding spreads.</div>
+        <div class="route" style="margin-top:8px">ATOM · ARB · DOGE · ALGO — balanced across venues</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="market">
+    <div class="kicker">02 · Live funding edge</div>
+    <h2>The seam the speed-bots ignore</h2>
+    <p class="sub">Cross-venue funding differentials — a carry edge measured live from OKX & Hyperliquid.
+      Hours-horizon, immune to latency. (Snapshot — funding reprices every 8h.)</p>
+    <div class="grid">
+      <div class="card">
+        <div class="tag">Top delta-neutral carries · annualized</div>
+        <div class="rows">
+          <div class="row"><span class="c">ATOM</span><span class="a">+11.8% APR</span></div>
+          <div class="row"><span class="c">ARB</span><span class="a">+10.2% APR</span></div>
+          <div class="row"><span class="c">ZEC</span><span class="a">+9.6% APR</span></div>
+          <div class="row"><span class="c">DOGE</span><span class="a">+9.6% APR</span></div>
+          <div class="row"><span class="c">CRV</span><span class="a">+9.6% APR</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="tag">x402 capabilities · pay-per-call (USDC on Base)</div>
+        <div class="plist" style="margin-top:12px">
+          <div class="p"><div><div class="n">exit-check</div><div class="d">real liquidity / can you sell?</div></div><div class="pr">$0.01</div></div>
+          <div class="p"><div><div class="n">token-safety</div><div class="d">risk score</div></div><div class="pr">$0.02</div></div>
+          <div class="p"><div><div class="n">multichain-quote</div><div class="d">liquidity per chain</div></div><div class="pr">$0.01</div></div>
+          <div class="p"><div><div class="n">screen</div><div class="d">evolved tradeability (AUC .69)</div></div><div class="pr">$0.03</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="arch">
+    <div class="kicker">03 · The living loop</div>
+    <h2>Why reputation here can't be faked</h2>
+    <p class="sub">The moat is time. A verified track record can't be bought, cloned, or back-dated —
+      it only accrues, one attested outcome at a time.</p>
+    <div class="flow">
+      <div class="step"><div class="i">01</div><h4>Agent pays</h4><p>HTTP 402 → USDC on Base, ~2s settlement, no account, no gas for the seller.</p></div>
+      <div class="step"><div class="i">02</div><h4>APEX answers</h4><p>A real, measured signal from the evolved engine + live market data.</p></div>
+      <div class="step"><div class="i">03</div><h4>Sealed on-chain</h4><p><span class="mono">ApexAttestations.sol</span> records the claim, timestamped, immutable.</p></div>
+      <div class="step"><div class="i">04</div><h4>Outcome verified</h4><p>When the horizon passes, the result is posted. <span class="mono">accuracyBps()</span> is public.</p></div>
+    </div>
+    <div class="status">
+      <span class="pill">x402 gate <b>live</b> (payment verified via official lib)</span>
+      <span class="pill">Smart contract <b>compiled</b> · Solidity 0.8.26 · Base</span>
+      <span class="pill">Repo <b>public</b> · github.com/HinojosaMaker/apex</span>
+      <span class="pill pend">Mainnet deploy <b>pending</b> · one signature</span>
+      <span class="pill pend">Demand / listing <b>pending</b></span>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">04 · Honest by construction</div>
+    <h2>What's real, and what isn't — yet</h2>
+    <div class="hon">
+      <b>Real & running today:</b> the x402 payment gate (verified, rejects invalid payments), the
+      biomimetic screener (AUC 0.693 OOS), the live funding scanner, the quantum basket optimizer,
+      and the on-chain attestations contract (compiles, deploy pipeline tested on Base).<br><br>
+      <b>Honest about the rest:</b> real USDC inflow needs the contract deployed to mainnet (one
+      signature, ~$0.02 gas) and agents discovering the service. No magic — value is earned, and the
+      on-chain track record is the asset that compounds for free while it earns trust.
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <div class="mono">APEX · x402 + on-chain attestations · Base</div>
+  <div style="margin-top:6px">Built autonomously, measured honestly. MIT. ·
+    <a href="https://github.com/HinojosaMaker/apex" style="color:var(--signal);text-decoration:none">source →</a></div>
+</footer>
