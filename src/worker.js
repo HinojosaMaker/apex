@@ -30,10 +30,49 @@ function requirements(resource, usd) {
     maxTimeoutSeconds: 120, extra: { feePayer: FEEPAYER } };
 }
 function manifest(origin) {
-  return { x402Version: 2, name: "APEX Capability Gate", facilitator: FACIL, network: "solana",
-    asset: USDC, payTo: PAYTO,
-    resources: Object.entries(CAPS).map(([k, v]) => ({ path: "/" + k, resource: origin + "/" + k,
-      price: "$" + v.usd, network: "solana", asset: USDC, payTo: PAYTO, description: v.desc })) };
+  return {
+    x402Version: 2, name: "APEX Capability Gate", serviceName: "APEX",
+    description: "Pay-per-call crypto intelligence for AI agents. Measured signals (liquidity, exit, safety, evolved tradeability) with on-chain verifiable track record. USDC on Solana, gasless.",
+    facilitator: FACIL, network: "solana", asset: USDC, payTo: PAYTO,
+    tags: ["crypto", "defi", "trading", "token-safety", "liquidity", "ai-agents", "oracle", "solana", "signals"],
+    type: "http", icon: origin + "/icon.svg",
+    resources: Object.entries(CAPS).map(([k, v]) => ({
+      path: "/" + k, resource: origin + "/" + k, serviceName: "APEX " + k,
+      price: "$" + v.usd, network: "solana", asset: USDC, payTo: PAYTO,
+      description: v.desc, tags: ["crypto", k],
+      accepts: [requirements("/" + k, v.usd)],
+      extensions: { bazaar: { info: {
+        input: { method: "GET", queryParams: { token: "token mint/contract address (required)" } },
+        output: { body: "JSON verdict with measured on-chain metrics" } } } },
+      example: origin + "/" + k + "?token=So11111111111111111111111111111111111111112",
+    })),
+  };
+}
+const LLMS_TXT = `# APEX — Pay-per-call crypto intelligence for AI agents
+
+APEX sells measured crypto signals per call in USDC on Solana (x402), gasless for buyer and seller.
+Every answer is real on-chain data, not vibes. Pay \$0.05 USDC per call via the x402 protocol.
+
+## Endpoints (GET, pass ?token=<mint/address>)
+- /exit-check       Can you actually sell this token? Real liquidity. \$0.05
+- /token-safety     Risk score from liquidity, volume, age, momentum. \$0.05
+- /multichain-quote Where it trades and with how much liquidity per chain. \$0.05
+- /screen           Evolved tradeability score (genetic model, AUC~0.69 out-of-sample). \$0.05
+
+## How to pay
+1. GET the endpoint -> receive HTTP 402 with accepts[] (Solana USDC, feePayer sponsored).
+2. Sign the x402 payment, send header X-PAYMENT.
+3. Receive the data. Settlement via facilitator ${FACIL}.
+
+payTo: ${PAYTO} (Solana mainnet). Manifest: /.well-known/x402.json
+`;
+function agentCard(origin) {
+  return {
+    name: "APEX", description: "Pay-per-call crypto intelligence oracle for AI agents (x402, USDC on Solana).",
+    url: origin, version: "1.0.0", protocol: "x402",
+    capabilities: Object.keys(CAPS), payment: { protocol: "x402", network: "solana", asset: USDC, payTo: PAYTO },
+    manifest: origin + "/.well-known/x402.json", docs: origin + "/llms.txt",
+  };
 }
 
 async function dex(addr) {
@@ -85,6 +124,9 @@ export default {
     const origin = url.origin;
     const path = url.pathname;
     if (path === "/" || path === "/.well-known/x402.json") return j(200, manifest(origin));
+    if (path === "/llms.txt") return new Response(LLMS_TXT, { headers: { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" } });
+    if (path === "/.well-known/agent.json" || path === "/agent.json") return j(200, agentCard(origin));
+    if (path === "/icon.svg") return new Response('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#070A0F"/><circle cx="32" cy="32" r="9" fill="none" stroke="#34E5C6" stroke-width="4"/><circle cx="32" cy="32" r="3" fill="#F6B452"/></svg>', { headers: { "Content-Type": "image/svg+xml", "Access-Control-Allow-Origin": "*" } });
     const cap = path.replace(/^\//, "");
     if (!CAPS[cap]) return j(404, { error: "unknown capability", catalog: Object.keys(CAPS) });
     const reqs = requirements("/" + cap, CAPS[cap].usd);
