@@ -9,6 +9,7 @@ const PAYTO    = "GmoCdZy25Z6DoDVj14Lh6twthfL6RCnxPjL8oVoSKTZP";
 const USDC     = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // USDC mint Solana
 const FACIL    = "https://intel.twzrd.xyz";
 const FEEPAYER = "GWRLgRB6diC2zG9BaoGJsan9T8JvJCk7usFruiefnfMP";
+const NETWORK  = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"; // Solana mainnet CAIP-2
 const GENOME   = [1.0355841279, -0.0121140570, 1.4152982046, 0.7254057529, -1.1825634873, -0.2270064257];
 
 const CAPS = {
@@ -25,7 +26,7 @@ const j = (code, obj, extra = {}) =>
 
 function requirements(resource, usd) {
   const atomic = String(Math.max(50000, Math.round(usd * 1e6)));
-  return { scheme: "exact", network: "solana", maxAmountRequired: atomic, asset: USDC,
+  return { scheme: "exact", network: NETWORK, maxAmountRequired: atomic, asset: USDC,
     payTo: PAYTO, resource, description: "APEX capability", mimeType: "application/json",
     maxTimeoutSeconds: 120, extra: { feePayer: FEEPAYER } };
 }
@@ -33,12 +34,12 @@ function manifest(origin) {
   return {
     x402Version: 2, name: "APEX Capability Gate", serviceName: "APEX",
     description: "Pay-per-call crypto intelligence for AI agents. Measured signals (liquidity, exit, safety, evolved tradeability) with on-chain verifiable track record. USDC on Solana, gasless.",
-    facilitator: FACIL, network: "solana", asset: USDC, payTo: PAYTO,
+    facilitator: FACIL, network: NETWORK, asset: USDC, payTo: PAYTO,
     tags: ["crypto", "defi", "trading", "token-safety", "liquidity", "ai-agents", "oracle", "solana", "signals"],
     type: "http", icon: origin + "/icon.svg",
     resources: Object.entries(CAPS).map(([k, v]) => ({
       path: "/" + k, resource: origin + "/" + k, serviceName: "APEX " + k,
-      price: "$" + v.usd, network: "solana", asset: USDC, payTo: PAYTO,
+      price: "$" + v.usd, network: NETWORK, asset: USDC, payTo: PAYTO,
       description: v.desc, tags: ["crypto", k],
       accepts: [requirements("/" + k, v.usd)],
       extensions: { bazaar: { info: {
@@ -73,6 +74,25 @@ function agentCard(origin) {
     capabilities: Object.keys(CAPS), payment: { protocol: "x402", network: "solana", asset: USDC, payTo: PAYTO },
     manifest: origin + "/.well-known/x402.json", docs: origin + "/llms.txt",
   };
+}
+function openapiDoc(origin) {
+  const paths = {};
+  for (const [k, v] of Object.entries(CAPS)) {
+    paths["/" + k] = { get: {
+      summary: v.desc, operationId: k,
+      parameters: [{ name: "token", in: "query", required: true, schema: { type: "string" },
+        description: "token mint/contract address" }],
+      responses: {
+        "200": { description: "paid result (JSON verdict with measured on-chain metrics)" },
+        "402": { description: "Payment Required — x402 challenge, $" + v.usd + " USDC on Solana" },
+      },
+      "x-402": { price: "$" + v.usd, network: NETWORK, asset: USDC, payTo: PAYTO },
+    } };
+  }
+  return { openapi: "3.0.0",
+    info: { title: "APEX Capability Gate", version: "1.0.0",
+      description: "Pay-per-call crypto intelligence for AI agents (x402, USDC on Solana)." },
+    servers: [{ url: origin }], paths };
 }
 
 async function dex(addr) {
@@ -125,7 +145,8 @@ export default {
     const path = url.pathname;
     if (path === "/" || path === "/.well-known/x402.json") return j(200, manifest(origin));
     if (path === "/llms.txt") return new Response(LLMS_TXT, { headers: { "Content-Type": "text/plain; charset=utf-8", "Access-Control-Allow-Origin": "*" } });
-    if (path === "/.well-known/agent.json" || path === "/agent.json") return j(200, agentCard(origin));
+    if (path === "/.well-known/agent.json" || path === "/.well-known/agent-card.json" || path === "/agent.json") return j(200, agentCard(origin));
+    if (path === "/openapi.json") return j(200, openapiDoc(origin));
     if (path === "/icon.svg") return new Response('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#070A0F"/><circle cx="32" cy="32" r="9" fill="none" stroke="#34E5C6" stroke-width="4"/><circle cx="32" cy="32" r="3" fill="#F6B452"/></svg>', { headers: { "Content-Type": "image/svg+xml", "Access-Control-Allow-Origin": "*" } });
     const cap = path.replace(/^\//, "");
     if (!CAPS[cap]) return j(404, { error: "unknown capability", catalog: Object.keys(CAPS) });
