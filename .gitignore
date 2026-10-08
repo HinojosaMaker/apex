@@ -4,3 +4,4 @@ __pycache__/
 run.txt
 c1*/ c6/ c7/ c8/ c9/ live18/ prog/ clips*/ v4/ v5/ v6/ v7/
 .playwright-mcp/
+bot/bot_wallet.json
