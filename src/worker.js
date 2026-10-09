@@ -17,6 +17,7 @@ const CAPS = {
   "token-safety":     { usd: 0.05, desc: "Risk score: liquidity, volume, age, momentum" },
   "multichain-quote": { usd: 0.05, desc: "Where it trades and with how much liquidity" },
   "screen":           { usd: 0.05, desc: "Evolved tradeability score (genetic, AUC~0.69 OOS)" },
+  "oracle":           { usd: 0.05, desc: "Live on-chain intelligence: spot, real funding, Polymarket odds, gas, latency" },
 };
 
 const UA = { "User-Agent": "APEX-x402-worker" };
@@ -99,7 +100,48 @@ async function dex(addr) {
   const r = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${addr}`, { headers: UA });
   return await r.json();
 }
+
+// Live on-chain intelligence: all REAL public sources, with measured latency. No shell, no fake PnL.
+async function oracle() {
+  const t = (p) => { const s = Date.now(); return p.then((v) => [v, Date.now() - s]).catch(() => [null, Date.now() - s]); };
+  const jget = (u, o) => fetch(u, { headers: UA, ...(o || {}) }).then((r) => r.json());
+  const rpc = (u, m) => jget(u, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: m, params: [] }) });
+  const [cb, cbL] = await t(Promise.all(["BTC", "ETH", "SOL"].map((s) =>
+    jget(`https://api.coinbase.com/v2/prices/${s}-USD/spot`).then((d) => [s, parseFloat(d.data.amount)]))));
+  const [hl, hlL] = await t(jget("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "metaAndAssetCtxs" }) }));
+  const [pm, pmL] = await t(jget("https://gamma-api.polymarket.com/markets?limit=5&active=true&closed=false&order=volume24hr&ascending=false"));
+  const [pg, pgL] = await t(rpc("https://polygon-bor-rpc.publicnode.com", "eth_gasPrice"));
+  const prices = {}; (cb || []).forEach(([s, p]) => (prices[s] = p));
+  let funding = {};
+  if (hl && hl[0] && hl[1]) {
+    const univ = hl[0].universe, ctx = hl[1];
+    for (const name of ["BTC", "ETH", "SOL"]) {
+      const i = univ.findIndex((u) => u.name === name);
+      if (i >= 0) funding[name] = { apr_pct: Math.round(parseFloat(ctx[i].funding || 0) * 24 * 365 * 1e4) / 100, mark: parseFloat(ctx[i].markPx || 0) };
+    }
+  }
+  const rows = Array.isArray(pm) ? pm : (pm && pm.data) || [];
+  const markets = rows.slice(0, 5).map((m) => {
+    try {
+      const outs = JSON.parse(m.outcomes || "[]"), pr = JSON.parse(m.outcomePrices || "[]").map(Number);
+      const top = pr.indexOf(Math.max(...pr));
+      return { q: (m.question || "").slice(0, 80), lead: outs[top], p: Math.round(pr[top] * 1000) / 10, vol24h: Math.round(+m.volume24hr || 0) };
+    } catch { return null; }
+  }).filter(Boolean);
+  const gas = pg && pg.result ? Math.round(parseInt(pg.result, 16) / 1e7) / 100 : null;
+  const btcChg = null; // (24h change omitted to keep the paid call fast; spot+funding+odds are the alpha)
+  const carry = funding.BTC ? (funding.BTC.apr_pct > 3 ? "LONG-SPOT/SHORT-PERP pays" : funding.BTC.apr_pct < -3 ? "SHORT-SPOT/LONG-PERP pays" : "carry flat") : null;
+  return {
+    product: "APEX oracle — live on-chain intelligence (real sources, measured)",
+    ts: Date.now(), prices, funding, polymarket: markets,
+    chain: { polygon_gas_gwei: gas },
+    latency_ms: { coinbase: cbL, hyperliquid: hlL, polymarket: pmL, polygon: pgL },
+    read: { funding_carry: carry, note: "measured from public sources; not financial advice; no shell, no fake PnL" },
+  };
+}
+
 async function runCap(cap, q) {
+  if (cap === "oracle") return await oracle();
   const token = (q.get("token") || "").trim();
   if (!token) return { error: "missing ?token=<address>" };
   const d = await dex(token);
