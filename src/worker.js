@@ -180,6 +180,30 @@ async function facil(path, body) {
   try { return await r.json(); } catch { return {}; }
 }
 
+const SWAP_HTML = `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>APEX Swap &mdash; intercambia cripto en Solana</title>
+<style>
+body{margin:0;background:#070a0f;color:#e6edf3;font-family:system-ui,Segoe UI,sans-serif;min-height:100vh}
+header{text-align:center;padding:26px 16px 8px}
+h1{margin:0;font-size:22px;letter-spacing:1px}h1 b{color:#34e5c6}
+.sub{color:#8b98a9;font-size:13px;margin-top:6px}
+#integrated-terminal{max-width:420px;margin:18px auto;min-height:560px}
+.foot{text-align:center;color:#52657a;font-size:11px;padding:20px;max-width:520px;margin:0 auto}
+</style>
+<script src="https://plugin.jup.ag/plugin-v1.js" data-preload defer></script>
+</head><body>
+<header><h1>APE<b>X</b> SWAP</h1><div class="sub">Intercambia cualquier token de Solana &middot; mejor ruta v&iacute;a Jupiter</div></header>
+<div id="integrated-terminal"></div>
+<div class="foot">Enrutado por el agregador Jupiter (mejor precio en todos los DEX de Solana). No custodiamos tus fondos &mdash; firmas desde tu propia wallet.</div>
+<script>
+window.addEventListener("load",function(){if(!window.Jupiter)return;window.Jupiter.init({
+  displayMode:"integrated",integratedTargetId:"integrated-terminal",
+  endpoint:"https://api.mainnet-beta.solana.com",formProps:{},
+  platformFeeAndAccounts:{referralAccount:"GmoCdZy25Z6DoDVj14Lh6twthfL6RCnxPjL8oVoSKTZP",feeBps:50}
+});});
+</script></body></html>`;
+
 export default {
   async fetch(request) {
     const url = new URL(request.url);
@@ -190,6 +214,7 @@ export default {
     if (path === "/.well-known/agent.json" || path === "/.well-known/agent-card.json" || path === "/agent.json") return j(200, agentCard(origin));
     if (path === "/openapi.json") return j(200, openapiDoc(origin));
     if (path === "/icon.svg") return new Response('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#070A0F"/><circle cx="32" cy="32" r="9" fill="none" stroke="#34E5C6" stroke-width="4"/><circle cx="32" cy="32" r="3" fill="#F6B452"/></svg>', { headers: { "Content-Type": "image/svg+xml", "Access-Control-Allow-Origin": "*" } });
+    if (path === "/swap") return new Response(SWAP_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     const cap = path.replace(/^\//, "");
     if (!CAPS[cap]) return j(404, { error: "unknown capability", catalog: Object.keys(CAPS) });
     const reqs = requirements("/" + cap, CAPS[cap].usd);
